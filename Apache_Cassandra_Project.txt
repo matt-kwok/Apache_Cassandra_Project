@@ -1,0 +1,112 @@
+
+-- create keyspace
+
+CREATE KEYSPACE map WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 3} AND durable_writes = true;
+
+-- Q1 Find Universitys near a person
+CREATE TABLE IF NOT EXISTS map.university_by_person(
+	person_id UUID,
+	distance FLOAT,
+	university_name TEXT,
+	PRIMARY KEY((person_id), distance, university_name)
+) WITH CLUSTERING ORDER BY (distance ASC, university_name ASC);
+
+-- Q2 Find info about university shop
+CREATE TYPE map.location(
+	lat FLOAT,
+	lon FLOAT,
+);
+
+CREATE TABLE map.university(
+	university_name TEXT,
+	location frozen <location>,
+	university_phone TEXT,
+	PRIMARY KEY (university_name)
+);
+
+-- Q3 Find people(only names) interested near a university
+CREATE TABLE map.person_by_university_interested (
+	university_name TEXT,
+	interested BOOLEAN,
+	distance FLOAT,
+	person_id UUID,
+	PRIMARY KEY ((university_name), interested, distance, person_id)
+) WITH CLUSTERING ORDER BY (interested DESC, distance ASC, person_id ASC);
+
+-- Q4 Find courses whose registration data are in the future based on the
+-- universities found in Q1
+
+CREATE TABLE map.courses_by_university (
+	university_name TEXT,
+	order_time TIMESTAMP,
+	course_name TEXT,
+	course_cost FLOAT,
+	PRIMARY KEY ((university_name), order_time)
+) WITH CLUSTERING ORDER BY (order_time DESC);
+
+-- Q5 Find details about people in Q3
+
+CREATE TABLE map.people(
+	person_id UUID,
+	last_name TEXT,
+	first_name TEXT,
+	location frozen <location>,
+	PRIMARY KEY ((person_id), last_name, first_name)
+) WITH CLUSTERING ORDER BY (last_name ASC, first_name ASC);
+
+DESC TABLES; # to describe all the tables created 
+
+DESC TABLE people;
+
+-- SAMPLE DATA
+
+-- add universities close to a person (Q1 entries)
+INSERT INTO map.university_by_person(person_id, university_name, distance) VALUES
+(43f899d3-4242-472f-b39e-110b5dd9ab24, 'University of Toronto', 0.5);
+
+INSERT INTO map.university_by_person(person_id, university_name, distance) VALUES
+(ac76d8dd-00de-4bd5-b040-3197048ff541, 'University of Waterloo', 1.0);
+
+-- add info about the unversities (Q2 entries)
+INSERT INTO map.university(university_name,
+location, university_phone)
+VALUES ('University_of_Toronto', {lat: 43.6629, lon: 79.3957}, '416-978-2011');
+
+INSERT INTO map.university(university_name, 
+location, university_phone)
+VALUES ('University_of_Waterloo', {lat: 43.4723, lon: 80.5449}, '519-888-4567');
+
+-- add people close to unversities (Q3 entries)
+INSERT INTO map.person_by_university_interested(university_name, interested, distance, person_id) 
+VALUES ('University_of_Toronto', true, 0.5, 35651ec5-b3b8-40fc-9911-24f95da22d06);
+
+INSERT INTO map.person_by_university_interested(university_name, interested, distance, person_id) VALUES ('University_of_Waterloo', false, 0.5, a1385300-8a00-4546-ac06-1bb3550f2f75);
+
+-- add courses (Q4 entries)
+INSERT INTO map.courses_by_university(university_name, order_time, 
+course_name, course_cost) 
+VALUES ('University of Toronto', '2021-01-01 00:00:00', 'Physics I', 800.00);
+
+INSERT INTO map.courses_by_university(university_name, order_time, 
+course_name, course_cost) 
+VALUES ('University of Waterloo', '2021-01-01 00:00:00', 'Introduction to Chemistry', 800.00);
+
+-- add people (Q5 entries)
+INSERT INTO map.people(person_id, last_name, first_name, location)
+VALUES (71ecc111-f8f4-4355-84a1-3ee8bb23c173, 'Kwok', 'Matthew', {lat: 55.77749, lon: 64.09029});
+
+INSERT INTO map.people(person_id, last_name, first_name, location)
+VALUES (2132d8c9-8680-4538-8eac-5fde4d08cb46, 'Lam', 'Marko', {lat: 4.13584, lon: 113.66663});
+
+
+-- see if inserted info is in the table
+
+SELECT * FROM university_by_person; 
+
+SELECT * FROM university;
+
+SELECT * FROM person_by_university_interested;
+
+SELECT * FROM courses_by_university;
+
+SELECT * FROM people;
